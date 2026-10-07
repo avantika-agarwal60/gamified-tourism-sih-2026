@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model cities {
+  id                  String               @id
+  name                String               @unique
+  level_thresholds    Int[]
+  max_level           Int                  @default(5)
+  cities_jspine_url   String?              @unique
+  cities_jcover_url   String?              @unique
+  cities_stickers_url String[]
+  craft_categories    craft_categories[]
+  quests              quests[]
+  sellers             sellers[]
+  user_city_progress  user_city_progress[]
+}
+
+model completed_quests {
+  id           String   @id
+  user_id      String
+  quest_id     String
+  completed_at DateTime @default(now())
+  photo_url    String?
+  quests       quests   @relation(fields: [quest_id], references: [id])
+  users        users    @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, quest_id])
+}
+
+model coupons {
+  id                             String    @id @default(uuid())
+  user_id                        String
+  seller_id                      String
+  discount_percent               Int
+  source                         String
+  otp                            String?
+  redeemed                       Boolean   @default(false)
+  redeemed_at                    DateTime?
+  expires_at                     DateTime?
+  users_coupons_seller_idTousers users     @relation("coupons_seller_idTousers", fields: [seller_id], references: [id])
+  users_coupons_user_idTousers   users     @relation("coupons_user_idTousers", fields: [user_id], references: [id])
+}
+
+model quests {
+  id                      String             @id
+  city_id                 String
+  name                    String
+  description             String?
+  lat                     Float
+  lng                     Float
+  geofence_radius_km      Float              @default(0.05)
+  xp                      Int
+  qr_code                 String             @unique
+  created_by              String
+  quests_badges_url       String?            @unique(map: "quests_quests_badges_key")
+  monuments_illustrations String?
+  coins                   Int?
+  guide_dialogue          String?
+  completed_quests        completed_quests[]
+  journal_entries         journal_entries[]
+  quest_stickers          quest_stickers?
+  cities                  cities             @relation(fields: [city_id], references: [id])
+  users                   users              @relation(fields: [created_by], references: [id])
+  quiz_attempts           quiz_attempts[]
+  quiz_questions          quiz_questions[]
+  quest_progress          quest_progress[]
+}
+
+model quiz_questions {
+  id             String @id
+  quest_id       String
+  question       String
+  options        Json
+  correct_option String
+  quests         quests @relation(fields: [quest_id], references: [id])
+}
+
+model sellers {
+  id                String            @id
+  shop_name         String
+  description       String?
+  tax_bracket_tier  String?
+  craft_category_id String?
+  city_id           String?
+  address           String?
+  udyam_id          String?
+  udyam_proof_url   String?
+  cities            cities?           @relation(fields: [city_id], references: [id])
+  craft_categories  craft_categories? @relation(fields: [craft_category_id], references: [id])
+  users             users             @relation(fields: [id], references: [id])
+}
+
+model site_contacts {
+  id                 String  @id
+  type               String
+  proof_document_url String?
+  users              users   @relation(fields: [id], references: [id])
+}
+
+model user_city_progress {
+  id      String @id
+  user_id String
+  city_id String
+  xp      Int    @default(0)
+  level   Int    @default(1)
+  cities  cities @relation(fields: [city_id], references: [id])
+  users   users  @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, city_id])
+}
+
+model users {
+  id                               String               @id
+  username                         String
+  email                            String               @unique
+  phone                            String
+  hashedPassword                   String
+  role                             String
+  verificationStatus               String               @default("not_applicable")
+  isActive                         Boolean              @default(true)
+  createdAt                        DateTime             @default(now())
+  Refresh_token                    String?
+  refresh_expiry                   DateTime?
+  avatar                           Json?                @default("{}")
+  coins                            Int                  @default(0)
+  guide_name                       String?
+  completed_quests                 completed_quests[]
+  coupons_coupons_seller_idTousers coupons[]            @relation("coupons_seller_idTousers")
+  coupons_coupons_user_idTousers   coupons[]            @relation("coupons_user_idTousers")
+  journal_entries                  journal_entries[]
+  quests                           quests[]
+  quiz_attempts                    quiz_attempts[]
+  sellers                          sellers?
+  site_contacts                    site_contacts?
+  user_avatar_items                user_avatar_items[]
+  user_city_progress               user_city_progress[]
+  user_preferences                 user_preferences[]
+  quest_progress                   quest_progress[]
+}
+
+model quiz_attempts {
+  id               String         @id @default(uuid())
+  user_id          String
+  quest_id         String
+  attempt_number   Int            @default(1)
+  lives_left       Int            @default(4)
+  status           String         @default("in_progress")
+  score            Int?
+  discount_percent Int?
+  started_at       DateTime       @default(now())
+  completed_at     DateTime?
+  quiz_answers     quiz_answers[]
+  quests           quests         @relation(fields: [quest_id], references: [id])
+  users            users          @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, quest_id, attempt_number])
+}
+
+model quiz_answers {
+  id              String        @id @default(uuid())
+  attempt_id      String
+  question_id     String
+  selected_option String
+  is_correct      Boolean
+  answered_at     DateTime      @default(now())
+  quiz_attempts   quiz_attempts @relation(fields: [attempt_id], references: [id])
+}
+
+model craft_categories {
+  id               String             @id @default(uuid())
+  name             String
+  city_id          String
+  cities           cities             @relation(fields: [city_id], references: [id])
+  sellers          sellers[]
+  user_preferences user_preferences[]
+
+  @@unique([name, city_id])
+}
+
+model user_preferences {
+  id                String           @id @default(dbgenerated("gen_random_uuid()"))
+  user_id           String
+  craft_category_id String
+  craft_categories  craft_categories @relation(fields: [craft_category_id], references: [id])
+  users             users            @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, craft_category_id])
+}
+
+model journal_entries {
+  id         String   @id
+  user_id    String
+  quest_id   String
+  photo_urls String[]
+  caption    String?
+  sticker_id String?
+  created_at DateTime @default(now())
+  is_public  Boolean  @default(false)
+  quests     quests   @relation(fields: [quest_id], references: [id])
+  users      users    @relation(fields: [user_id], references: [id])
+}
+
+model quest_stickers {
+  id          String   @id
+  quest_id    String   @unique
+  name        String
+  description String?
+  image_path  String
+  created_at  DateTime @default(now()) @db.Timestamp(6)
+  quests      quests   @relation(fields: [quest_id], references: [id])
+}
+
+model ratings {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  quest_id    String?
+  seller_id   String?
+  rating      Int
+  review_text String?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model quest_progress {
+  id           String    @id @default(uuid())
+  user_id      String
+  quest_id     String
+  status       String    @default("accepted")   // "accepted" | "started"
+  accepted_at  DateTime  @default(now())
+  started_at   DateTime?
+  photo_url    String?                          // captured at verification
+  users        users     @relation(fields: [user_id], references: [id])
+  quests       quests    @relation(fields: [quest_id], references: [id])
+
+  @@unique([user_id, quest_id])
+}
+
+model avatar_items {
+  id                String              @id @default(uuid())
+  slot              String
+  name              String
+  price             Int                 @default(0)
+  image_path        String
+  is_default        Boolean             @default(false)
+  user_avatar_items user_avatar_items[]
+}
+
+model user_avatar_items {
+  id           String       @id @default(uuid())
+  user_id      String
+  item_id      String
+  purchased_at DateTime     @default(now())
+  avatar_items avatar_items @relation(fields: [item_id], references: [id])
+  users        users        @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, item_id])
+}
