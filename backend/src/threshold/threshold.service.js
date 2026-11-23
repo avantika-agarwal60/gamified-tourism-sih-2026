@@ -4,7 +4,7 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 const correctAnsXp = 10;
-const reductionFactor = 0.3;
+const reductionFactor = 0.25;
 export async function calculateThreshold(cityName)
 {
     if (!cityName)
