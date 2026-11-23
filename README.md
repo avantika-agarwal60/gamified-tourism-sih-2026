@@ -183,4 +183,66 @@ Returns the distance in kilometres between two coordinates, using the Haversine 
 ```js
 getDistanceKm(26.8467, 80.9462, 28.6139, 77.2090); // Lucknow to Delhi, about 417 km in a straight line
 ```
+## Backend setup
+
+The backend is a Node.js/Express API using Prisma with a Supabase Postgres database and Supabase Storage for photo uploads. Authentication uses role-based JWT access and refresh tokens.
+
+### Hosting status
+
+The API was originally hosted on Railway. The free trial has ended, so there is no live backend URL at the moment. You can run it locally with the steps below.
+
+
+### Prerequisites
+
+- Node.js 18+
+- A Supabase project (free tier works) with two storage buckets: one for quest photos and one for journal photos
+- A Gemini API key (only needed for the optional seed script, free version works fine)
+
+### Run locally
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Create your environment file and fill in the values:
+   ```bash
+   cp .env.example .env
+   ```
+3. Set up the database:
+   ```bash
+   npx prisma migrate deploy
+   npx prisma generate
+   ```
+4. Start the server:
+   ```bash
+   npm run dev
+   ```
+
+The server runs on `http://localhost:3000` unless `PORT` is set. 
+
+### Environment variables
+
+| Variable | Purpose |
+|---|---|
+| `ACCESS_TOKEN_SECRET` | Signs short-lived JWT access tokens (15 min) |
+| `REFRESH_TOKEN_SECRET` | Signs refresh tokens (15 days) |
+| `DATABASE_URL` | Pooled Postgres connection used at runtime |
+| `DIRECT_URL` | Direct Postgres connection used for Prisma migrations |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side key used to create signed upload URLs and upload journal photos; never expose to the client |
+| `SUPABASE_QUEST_PHOTO_BUCKET` | Bucket for quest completion photos (default `quest-evidence`) |
+| `SUPABASE_JOURNAL_BUCKET` | Bucket for journal photos (default `journal-photos`) |
+| `GEMINI_API_KEY` | Only needed by the seed script that generates AR guide dialogue |
+
+Secrets live only in environment variables. `.env` is git-ignored and `.env.example` lists the names without values. Passwords are hashed with bcrypt before storage.
+
+### Seeding guide dialogue (optional)
+
+The seed script fetches a Wikipedia summary for each demo monument, asks Gemini to generate the AR guide dialogue from that summary only, and saves the result to `quests.guide_dialogue`. It needs `GEMINI_API_KEY` and is not required to run the API.
+
+
+### Deploying
+
+Any Node host works (Railway, Render, etc.). Set the variables above in the host's environment settings, set the build and start commands from `package.json`, and run `npx prisma migrate deploy` against the production database.
+
 
